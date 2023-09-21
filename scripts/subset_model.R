@@ -19,7 +19,8 @@ df <- df %>%
 
 df <- 
   df %>% 
-  select(-Jahr, -damage_type) %>% 
+  select(-year, -damage_type) %>% 
+  mutate_all(~as.numeric(.)) %>% 
   mutate(damage_class = as.factor(damage_class))
 
 ## Modelisation
@@ -91,7 +92,7 @@ tuned_model <-
   fit(data = df_train) 
 
 (tuned_model)
-saveRDS(tuned_model, file=here("output", "model_10000.Rdata"))
+saveRDS(tuned_model, file=here("output", "model_rf_210923.Rdata"))
 
 df_test$prediction <- predict(tuned_model, df_test)[[1]]
 
