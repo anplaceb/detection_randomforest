@@ -32,7 +32,7 @@ df_test <- testing(df_split)
 # Models
 model_rf <- 
   rand_forest(mtry = tune(), trees = tune(), min_n = tune()) %>% 
-  set_engine("ranger", importance = "impurity") %>% 
+  set_engine("ranger", importance = "impurity", num.threads = parallel::detectCores()) %>% 
   set_mode("classification")
 
 model_xgboost <- 
@@ -44,7 +44,7 @@ model_xgboost <-
 grid_rf <- 
   grid_max_entropy(        
     mtry(range = c(1, 3)), 
-    trees(range = c(800, 1000)),
+    trees(range = c(500, 1000)),
     min_n(range = c(2, 4)),
     size = 10) 
 
@@ -63,8 +63,8 @@ wkfl_wgboost <-
 cv_folds <- group_vfold_cv(df_train, v = 5, group = ID)
 cv_folds
 
-my_metrics <- metric_set(accuracy, sens)
-# roc_auc, accuracy, sens, spec 
+my_metrics <- metric_set(accuracy)
+# roc_auc, accuracy, sens, spec, f_meas
 
 rf_fit <- tune_grid(
   wkfl_rf,
@@ -91,8 +91,15 @@ tuned_model <-
   finalize_workflow(select_best(rf_fit, metric = "accuracy")) %>% 
   fit(data = df_train) 
 
+tuned_model <-  
+  wkfl_rf %>%
+  finalize_workflow(select_best(rf_fit, metric = "accuracy")) %>% 
+  fit(data = df_train)  %>% 
+  extract_fit_parsnip()
+  
+
 (tuned_model)
-saveRDS(tuned_model, file=here("output", "model_rf_210923.Rdata"))
+saveRDS(tuned_model, file=here("output", "model_rf_10000_210923.Rdata"))
 
 df_test$prediction <- predict(tuned_model, df_test)[[1]]
 
