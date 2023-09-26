@@ -83,7 +83,8 @@ for(n in c(1:length(list_rpast))){
                                   type = "class", # class or prob
                                   na.rm=TRUE, 
                                   wopt= wopt_options)
-  writeRaster(pred_response, here('output', 'predictions', year, 
+  # pred response -1 to change output from 1 2 to 0 1 
+  writeRaster(pred_response-1, here('output', 'predictions', year, 
                                   paste0('predictions_rf_gee_ni_', year, '_', n, '.tif')), 
               filetype="GTiff", datatype='INT4S', overwrite=TRUE)
 
@@ -91,8 +92,4 @@ for(n in c(1:length(list_rpast))){
 
 }
 
-plot(pred_response)
-m <- c(-Inf,threshold, 1,
-       threshold, 9999, 0)
-m <- matrix(m, ncol=3, byrow=TRUE)
-classify(nbr_diff[[i]], m, right=TRUE)
+
