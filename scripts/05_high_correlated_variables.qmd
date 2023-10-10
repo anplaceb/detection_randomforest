@@ -6,6 +6,9 @@ format: html
 ```{r}
 library(dplyr)
 library(corrplot)
+library(data.table)
+library(here)
+library(caret)
 ```
 
 Looks for high correlated variables
@@ -13,7 +16,7 @@ Looks for high correlated variables
 Load data from Friedericke 2018 and Harz 2021
 
 ```{r}
-Friedericke2018_data <- fread(here("output", "reference_Friedericke_2018_clean.csv"), dec = ",")
+Friedericke2019_data <- fread(here("output", "reference_Friedericke_2019_clean.csv"), dec = ",")
 Harz2021_data <- fread(here("output", "reference_Harz_2021_clean.csv"), dec = ",")
 ```
 
@@ -21,72 +24,84 @@ Merge both datasets
 
 ```{r}
 # Each geometry has to have a unique ID before merging
-Harz2021_data$ID <- Harz2021_data$ID + max(Friedericke2018_data$ID)
-reference_data <- rbind(Friedericke2018_data, Harz2021_data)
-#write.csv2(reference_data, here("output", "reference_Harz_Friedericke_2021_2018.csv"), row.names=FALSE)
+Harz2021_data$ID <- Harz2021_data$ID + max(Friedericke2019_data$ID)
+reference_data <- rbind(Friedericke2019_data, Harz2021_data)
+#write.csv2(reference_data, here("output", "reference_Harz_Friedericke_2021_2019.csv"), row.names=FALSE)
 ```
 
 Remove highly correlated variables
 
 ```{r}
-data2cor <- reference_data %>% select(!c("ID", "Jahr", "damage_type", "damage_class"))
+# all spectral variables, too much for visualization
+data2cor <- reference_data %>% select(!c("ID", "year", "damage_type", "damage_class"))
 
-data2cor <- reference_data %>% select(c("i7_diff", "nbr_diff", "ndvi_diff", "swir2_diff", "swir1_diff", "red_diff", "i6_diff", "ndwi_diff", "gndvi_diff", "swir1_past"))
+# add the ones with the biggest ratio (mean sd analyse detection from index_analysis) and add only a variable if the correlation to all other variables is max 0.80
 
+data2cor <- reference_data %>% select(c("swir2_diff",    "nbr_diff"    ,  "ndvi_present" , "re2_past",      "swir1_past"  ,  "satvi_diff" ,   "gndvi_diff" ,   "i5_past"  ,     "i1_diff"   ,   
+"green_diff"  ,  "satvi_present" ,"i2_diff"  ,     "swir2_present", "i3_past" ,      "i3_present"   , "i6_past" ,      "i4_diff"       ))
 
-correlation_matrix <- cor(data2cor, use="complete.obs")
 corrplot(cor(na.omit(data2cor)), method="number")
+correlation_matrix <- cor(data2cor, use="complete.obs")
+#"swir1_past",  "satvi_diff" 
 
-test <- as.data.frame(correlation_matrix) %>% 
-       select(all_of(variables_stay))
-
-
-# 
-cols2remove <- findCorrelation(correlation_matrix, cutoff = 0.80)
-cols2remove <- sort(cols2remove)
-
-variables_stay <- colnames(correlation_matrix[,-c(cols2remove)])
-variables_stay
-reference_data_nocorr <- reference_data[,c(variables_stay, "ID", "Jahr", "damage_type", "damage_class")]
-#write.csv2(reference_data_nocorr, here("output", "reference_Harz_Friedericke_2021_2018_lowCorr.csv"), row.names=FALSE)
-
-test <- as.data.frame(correlation_matrix) %>% select(nbr_diff)
 ```
-
-\#########
-
-Calculate neighbor values mean and sd
 
 ```{r}
-# run loop to create RasterStack with weighted mean of 
-# neighbour values for each pixel and each band
-m=matrix(c(1, 2, 1, 2, 0, 2, 1, 2, 1), ncol=3, nrow=3)
-rs_focal=focal(rpast[[1]], fun=mean, w=m) # the first layer
-for (i in 2:nlyr(rpast)) # the rest of the layers
-{
-rl=focal(rpast[[i]], fun=mean, w=m)
-rs_focal=c(rs_focal, rl)
-}
-names(rs_focal)=paste(names(rpast))
-#end of loop
+variables <- c( "nbr2_diff", "swir1_diff",    "nbr_diff",      "ndvi_present",  "ndvi_diff",     "re2_past"    ,  "satvi_past",  "i4_present" ,  
 
-#run loop to create RasterStack with standard deviation within band for
-#set of pixels for each band
-m=matrix(c(1, 1, 1, 1, 1, 1, 1, 1, 1), ncol=3, nrow=3)
-rs_focal_sd=focal(img_2017_2dates_4band[[1]], fun=sd, w=m)
-for (i in 2:nlayers(img_2017_2dates_4band))
-{
-rl=focal(img_2017_2dates_4band[[i]], fun=sd, w=m)
-rs_focal_sd=stack(rs_focal_sd, rl)
-}
-names(rs_focal_sd)=paste(names(img_2017_2dates_4band), "f")
-#end of loop
+"nir2_past" ,    "mcari_present", "i1_present"  ,  "nir_past"     , "re3_past"  ,    "gndvi_present", "i6_diff"       ,"savi_present" , "red_diff"   ,  
 
+"swir1_past"  ,  "i6_present"   , "nbr_present" ,  "re1_diff"   ,   "savi_past"   ,  "nbr2_present" , "satvi_diff"   , "i3_diff"     ,  "gndvi_diff" ,  
 
-img_focal=stack(img, rs_focal_n, rs_focal_sd)
-roi_data=extract(x=img_layers, y=trainData, df=TRUE) #where trainData is  training polygon for classification
-roi_data$class <- as.factor(trainData$Class_num[roi_data$ID])#assign class to each row as a column
-#rf <- randomForest(class ~ ., data=roi_data[,c(2:ncol(roi_data)], importance=TRUE)
+ "i5_past"    ,   "re3_present" ,  "red_present"  , "nir_present",   "nir2_present",  "i4_past"     ,  "i2_past"     ,  "i1_diff"    ,   "green_diff"  , 
+
+ "i5_present" ,   "re2_present" ,  "swir2_past" ,   "re1_past"    ,  "mcari_past" ,   "mcari_diff"  ,  "satvi_present", "i2_diff"    ,   "blue_diff"  ,  
+
+"gndvi_past"  ,  "swir2_present", "green_past"  ,  "i3_past"    ,   "i1_past"    ,   "i3_present" ,   "blue_present" , "ndvi_past"   ,  "savi_diff"  ,  
+
+"i6_past"   ,    "re1_present"  , "i2_present"  ,  "re2_diff"   ,   "i4_diff"    ,   "green_present" ,"nir2_diff"  ,   "blue_past"   ,  "nir_diff"   ,  
+
+ "re3_diff"     , "swir1_present", "i5_diff"    ,   "nbr_past"    ,  "red_past"   ,   "nbr2_past" )
+select_vec <- c("swir2_diff")
+
+for (var in variables){
+  # add column names to the select vector
+  select_vec <- c(select_vec, var)
+  # select data with column names
+  data2cor <- reference_data %>% select(select_vec)
+  print(names(data2cor))
+  
+  # calculate correlation matrix
+  correlation_matrix <- cor(data2cor, use="complete.obs")
+
+  # check if adding new variables brings correlations above 0.84
+  condition <- which(abs(correlation_matrix)>0.79 & correlation_matrix<1)
+  print(condition)
+  
+
+  # if condition not fullfilled i.e. it does not add high correlation, do nothing
+  if(length(condition)==0 ){
+  print(paste0(var, "added ", sep=" "))
+  }
+  else{
+    print(paste0(var, " adds too much correlation, drop ", sep=" "))
+  # if it does, remove added variable from the columns to select and from the data frame to calculate the correlation
+  select_vec <- select_vec [!select_vec %in% var] 
+  #data2cor <- reference_data %>% select(-var)
+  }
+} 
+
 ```
 
-### 
+```{r}
+# Manually version
+# all spectral variables, too much for visualization
+data2cor <- reference_data %>% select(!c("ID", "year", "damage_type", "damage_class"))
+
+# add the ones with the biggest ratio (mean sd analyse detection from index_analysis) and add only a variable if the correlation to all other variables is max 0.80
+data2cor <- reference_data %>% select(c("swir2_diff",    "nbr_diff"    ,  "ndvi_present" , "re2_past",      "swir1_past"  ,  "satvi_diff" ,   "gndvi_diff" ,   "i5_past"  ,     "i1_diff"   ,   
+"green_diff"  ,  "satvi_present" ,"i2_diff"  ,     "swir2_present", "i3_past" ,      "i3_present"   , "i6_past" ,      "i4_diff"       ))
+
+corrplot(cor(na.omit(data2cor)), method="number")
+correlation_matrix <- cor(data2cor, use="complete.obs")
+

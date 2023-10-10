@@ -8,8 +8,11 @@ library(vip)
 
 set.seed(123)
 
-d1 <- fread(here("output", "reference_Friedericke_2018_clean.csv"), dec = ",")
+d1 <- fread(here("output", "reference_Friedericke_2019_clean.csv"), dec = ",")
 d2 <- fread(here("output", "reference_Harz_2021_clean.csv"), dec = ",")
+
+d2$ID <- d2$ID + max(d1$ID) # to ensure an unique ID for each polygon after merging dataframes
+
 df <- rbind(d1,d2)
 
 df <- df %>%
@@ -43,7 +46,7 @@ model_xgboost <-
 # Grid of hyperparameters
 grid_rf <- 
   grid_max_entropy(        
-    mtry(range = c(1, 3)), 
+    mtry(range = c(2, 5)), 
     trees(range = c(500, 1000)),
     min_n(range = c(2, 4)),
     size = 10) 
@@ -51,8 +54,10 @@ grid_rf <-
 # Workflow
 wkfl_rf <- 
   workflow() %>% 
-  add_formula(damage_class ~ nbr_diff + swir1_diff + swir1_past) %>% 
+  add_formula(damage_class ~ swir2_diff + nbr_diff  +  ndvi_present + re2_past  + swir1_past    ) %>% 
   add_model(model_rf)
+
+# nbr_diff + swir1_diff + swir1_past
 
 wkfl_wgboost <- 
   workflow() %>% 
@@ -84,7 +89,7 @@ wkfl_rf %>%
   finalize_workflow(select_best(rf_fit, metric = "accuracy")) %>% 
   fit(data = df_train)  %>% 
   extract_fit_parsnip() %>% 
-  vip(num_features = 3)
+  vip(num_features = 5)
 
 tuned_model <-  
   wkfl_rf %>% 
@@ -99,7 +104,7 @@ tuned_model <-
   
 
 (tuned_model)
-saveRDS(tuned_model, file=here("output", "model_rf_10000_210923.Rdata"))
+#saveRDS(tuned_model, file=here("output", "model_rf_gee_10000_091023.Rdata"))
 
 df_test$prediction <- predict(tuned_model, df_test)[[1]]
 
