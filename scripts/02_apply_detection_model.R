@@ -29,7 +29,7 @@ year_of_prediction = '2023'
 name_model <- "model_rf_lokal_10000_181023_3var.Rdata" # must be located in the output folder of this project
 output_type = "prob" # prob or class
 
-# Env
+# Env options
 terraOptions(tempdir=r"{Y:\Andrea\temp}")
 terraOptions()
 wopt_options <- list(gdal = c("NUM_THREADS = ALL_CPUS"))
