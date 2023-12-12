@@ -25,8 +25,8 @@ output_folder <- r"{output\predictions}"
 # if output_folder doesn't exist is created in the project directory
 if (!dir.exists(here(output_folder))) {dir.create(here(output_folder), recursive=TRUE)}
 
-year_of_prediction = '2023'
-name_model <- "model_rf_lokal_10000_181023_3var.Rdata" # must be located in the output folder of this project
+year_of_prediction = '2019'
+name_model <- "model_rf_lokal_10000_181023_3var.Rdata" # must be located in the models folder of this project
 output_type = "prob" # prob or class
 
 # Env options
@@ -39,7 +39,7 @@ list_rpresent <- list.files(path=input_folder_present, pattern="\\.tif$", full.n
 list_rpast <- list.files(path=input_folder_past, pattern="\\.tif$", full.names = TRUE)
 
 # Load model
-rf_model <- readRDS(here("output", name_model))
+rf_model <- readRDS(here("models", name_model))
 
 # Define and if not existing, create output folder for detection
 prediction_output_folder <- here(output_folder, paste0(gsub("\\..*", "", name_model), "_", output_type)
@@ -75,9 +75,7 @@ for(n in c(1:length(list_rpast))){
   names(raster2predict) <- c("nbr_diff", "satvi_past", "swir1_diff")
   
   # Remove not necessary layers
-  #rm(rpresent, rpast, indices_rpresent, indices_rpast, nbr_diff, satvi_past, swir1_diff)
-  
-  
+  rm(rpresent, rpast, indices_rpresent, indices_rpast, nbr_diff, satvi_past, swir1_diff)
   
   # Predict
   pred_response <- terra::predict(object= raster2predict, 
@@ -86,16 +84,21 @@ for(n in c(1:length(list_rpast))){
                                   type = output_type, # class or prob
                                   na.rm=TRUE, 
                                   wopt= wopt_options)
-  # pred response -1 to change output from 1 2 to 0 1 
-  writeRaster(pred_response-1, here('output', 'predictions', 'model_rf_lokal_10000_181023_3var_prob', year_of_prediction, 'tiles', 
-                                    paste0('predictions_rf_gee_ni_', year_of_prediction, '_', n, '.tif')), 
-              filetype="GTiff", datatype='FLT4S', overwrite=TRUE)
-  
-  
+ 
   output_file_name <- paste0('predictions_rf_gee_ni_', year_of_prediction, '_', n, '.tif')
-  writeRaster(x=pred_response-1, 
-              filename=paste(prediction_output_folder, output_file_name, sep="\\"), 
-              filetype="GTiff", datatype=output_data_type, overwrite=TRUE)
+  
+  # Save prediction
+  if(output_type == "class"){
+  # pred response -1 to change output class from 1 2 to 0 1 
+    writeRaster(x=pred_response-1,  
+    filename=paste(prediction_output_folder, output_file_name, sep="\\"), 
+    filetype="GTiff", datatype=output_data_type, overwrite=TRUE)
+    } else if(output_type == "prob"){
+    writeRaster(x=pred_response,  
+    filename=paste(prediction_output_folder, output_file_name, sep="\\"), 
+    filetype="GTiff", datatype=output_data_type, overwrite=TRUE)
+    }
+
   
 
 }

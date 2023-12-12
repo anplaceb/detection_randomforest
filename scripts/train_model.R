@@ -9,8 +9,8 @@ library(vip)
 set.seed(123)
 
 # Load input tables to train the model
-d1 <- fread(here("output", "reference_Friedericke_2018_clean.csv"), dec = ",")
-d2 <- fread(here("output", "reference_Harz_2021_clean.csv"), dec = ",")
+d1 <- fread(here("input", "reference_Friedericke_2018_clean.csv"), dec = ",")
+d2 <- fread(here("input", "reference_Harz_2021_clean.csv"), dec = ",")
 
 name_model <- "model_rf_lokal_10000_181023_12var.Rdata" # under which name the model is saved
 
@@ -99,7 +99,7 @@ tuned_model <-
   extract_fit_parsnip()
 
 # Save model  
-saveRDS(tuned_model2, file=here("output", name_model))
+saveRDS(tuned_model, file=here("models", name_model))
 
 # Make prediction on test data and create confusion matrix
 df_test$prediction <- predict(tuned_model, df_test)[[1]]
