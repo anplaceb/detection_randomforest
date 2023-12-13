@@ -89,12 +89,14 @@ for(n in c(1:length(list_rpast))){
   
   # Save prediction
   if(output_type == "class"){
-  # pred response -1 to change output class from 1 2 to 0 1 
+    # class: pred response -1 to change output class from 1 2 to 0 1 
+    # prob: pred response -1 and absolute because the probability for no damage
+    # is given, to turn 0 to 1 and 1 to 0 (probability for damage instead)
     writeRaster(x=pred_response-1,  
     filename=paste(prediction_output_folder, output_file_name, sep="\\"), 
     filetype="GTiff", datatype=output_data_type, overwrite=TRUE)
     } else if(output_type == "prob"){
-    writeRaster(x=pred_response,  
+    writeRaster(x=abs(pred_response-1),  
     filename=paste(prediction_output_folder, output_file_name, sep="\\"), 
     filetype="GTiff", datatype=output_data_type, overwrite=TRUE)
     }
